@@ -9,7 +9,6 @@ verify_ssl = true
 tensorflow = "*"
 numpy = "*"
 matplotlib = "*"
-tensorflow-examples = {git = "https://github.com/tensorflow/examples.git"}
 image = "*"
 pydot = "*"
 graphviz = "*"
@@ -17,6 +16,7 @@ keras = "*"
 ipython = "*"
 jinja2 = "*"
 tensorflow-model-optimization = "*"
+silence-tensorflow = "*"
 
 [requires]
 python_version = "3.7"

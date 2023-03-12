@@ -1,11 +1,28 @@
 import os
 import tensorflow as tf
-from tensorflow_examples.models.pix2pix import pix2pix
 import multiprocessing
 
 from metrics import iou_coef, dice_coef, border_acc, content_acc, background_acc, save_model_history_metrics
 from utils import load_data_set, load_image_train, load_image_test, count_files_in_folder, IMAGE_SIZE
 
+def upsample(filters, size, apply_dropout=False):
+  initializer = tf.random_normal_initializer(0., 0.02)
+
+  result = tf.keras.Sequential()
+  result.add(
+    tf.keras.layers.Conv2DTranspose(filters, size, strides=2,
+                                    padding='same',
+                                    kernel_initializer=initializer,
+                                    use_bias=False))
+
+  result.add(tf.keras.layers.BatchNormalization())
+
+  if apply_dropout:
+      result.add(tf.keras.layers.Dropout(0.5))
+
+  result.add(tf.keras.layers.ReLU())
+
+  return result
 
 class DisplayCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
@@ -61,10 +78,10 @@ if __name__ == "__main__":
     down_stack = tf.keras.Model(inputs=base_model.input, outputs=layers)
     down_stack.trainable = False
     up_stack = [
-        pix2pix.upsample(576, 3),  # 7x7 -> 14x14
-        pix2pix.upsample(192, 3),  # 14x14 -> 28x28
-        pix2pix.upsample(144, 3),  # 28x28 -> 56x56
-        pix2pix.upsample(96, 3),  # 56x56 -> 112x112
+        upsample(576, 3),  # 7x7 -> 14x14
+        upsample(192, 3),  # 14x14 -> 28x28
+        upsample(144, 3),  # 28x28 -> 56x56
+        upsample(96, 3),  # 56x56 -> 112x112
     ]
 
 
