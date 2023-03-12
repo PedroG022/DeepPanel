@@ -6,7 +6,7 @@ import os
 from metrics import iou_coef, dice_coef, border_acc, background_acc, content_acc
 from utils import count_files_in_folder, labeled_prediction_to_image, map_prediction_to_mask, IMAGE_SIZE
 
-INPUT_PATH = "./tests/raw/"
+INPUT_PATH = "./dataset/test/raw/"
 OUTPUT_PATH = "./output/"
 
 
@@ -23,9 +23,6 @@ def load_images_from_folder(folder, shuffle=True):
     return files.map(parse_image)
 
 
-dataset = load_images_from_folder(INPUT_PATH, shuffle=False)
-
-
 def normalize(input_image):
     input_image = tf.cast(input_image, tf.float32) / 255.0
     return input_image
@@ -37,6 +34,15 @@ def load_image_test(datapoint):
     input_image = normalize(input_image)
 
     return input_image
+
+
+def predict(model, dataset):
+    TESTING_BATCH_SIZE = count_files_in_folder(INPUT_PATH)
+    test = dataset.map(load_image_test)
+    test_dataset = test.batch(TESTING_BATCH_SIZE)
+    predictions = model.predict(test_dataset)
+
+    return predictions
 
 
 def load_model(model_path):
@@ -82,20 +88,18 @@ def label_predictions(predictions):
 
 
 if __name__ == "__main__":
-    print(" - Loading saved model")
+    print(" - Loading saved model and dataset")
+
     model = load_model("./model")
+    dataset = load_images_from_folder(INPUT_PATH, shuffle=False)
 
-    TESTING_BATCH_SIZE = count_files_in_folder(INPUT_PATH)
-    test = dataset.map(load_image_test)
-    test_dataset = test.batch(TESTING_BATCH_SIZE)
-
-    print(f" - Test data loaded for {TESTING_BATCH_SIZE} images")
+    print(f" - Test data loaded for {len(dataset)} images")
     print(" - Prediction started")
 
-    predictions = model.predict(test_dataset)
+    predictions = predict(model, dataset)
 
     print(f" - Prediction finished for {len(predictions)} images")
-    print(f" - Let's transform predictions into labeled values.")
+    print(f" - Transforming predictions into labeled values.")
 
     labeled_predictions = label_predictions(predictions)
 
