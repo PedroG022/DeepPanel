@@ -2,12 +2,13 @@ import silence_tensorflow.auto
 import tensorflow as tf
 import numpy as np
 import os
+from ShallowPanel import parse_matrix, extract_panels
 
 from utils import count_files_in_folder, labeled_prediction_to_image, map_prediction_to_mask, IMAGE_SIZE
 from metrics import iou_coef, dice_coef, border_acc, background_acc, content_acc
 from tensorflow import keras
 
-INPUT_PATH = "./dataset/test/raw/"
+INPUT_PATH = "./supreme/"
 OUTPUT_PATH = "./output/"
 
 # ===========================
@@ -156,16 +157,19 @@ def process_tflite(processed_images, model):
     predictions = predict_tflite(interpreter=interpreter, input_data=input_data,
                                  input_details=input_details, output_details=output_details, num_images=num_images)
 
-    print(f" - Let's transform predictions into labeled values.")
+    x = extract_panels(predictions[0], original_width=1280, original_height=1771)
+    print(len(x.panels))
 
-    labeled_predictions = label_predictions(predictions)
+    # print(f" - Let's transform predictions into labeled values.")
 
-    print(f" - Saving labeled images into {OUTPUT_PATH} folder")
-    write_mask_output(labeled_predictions)
+    # labeled_predictions = label_predictions(predictions)
+
+    # print(f" - Saving labeled images into {OUTPUT_PATH} folder")
+    # write_mask_output(labeled_predictions)
 
 
 if __name__ == "__main__":
     print(" - Loading and processing images...")
     processed_images = load_images_from_folder(INPUT_PATH, shuffle=False)
 
-    process_default(processed_images, './model')
+    process_tflite(processed_images, 'pretrained.model.tflite')
