@@ -1,14 +1,17 @@
-import silence_tensorflow.auto
+import silence_tensorflow.auto 
 import tensorflow as tf
 import numpy as np
+import cv2
 import os
 
-from utils import count_files_in_folder, labeled_prediction_to_image, map_prediction_to_mask, IMAGE_SIZE
+from utils import count_files_in_folder, files_in_folder, labeled_prediction_to_image, map_prediction_to_mask, IMAGE_SIZE
 from metrics import iou_coef, dice_coef, border_acc, background_acc, content_acc
+from DeepPanelExtractor import extract_panels
 from tensorflow import keras
 
-INPUT_PATH = "./dataset/test/raw/"
+INPUT_PATH = "./test_input/"
 OUTPUT_PATH = "./output/"
+PANELS_OUTPUT_PATH = f"{OUTPUT_PATH}/panels/"
 
 # ===========================
 # Modified methods
@@ -72,6 +75,15 @@ def label_predictions(predictions):
 
     return labeled_predictions
 
+def make_labels_and_output(predictions):
+    print(f" - Prediction finished for {len(predictions)} images.")
+    print(f" - Transforming predictions into labeled values...")
+
+    labeled_predictions = label_predictions(predictions)
+
+    print(f" - Saving mask images into {OUTPUT_PATH} folder...")
+    write_mask_output(labeled_predictions)
+
 # ===========================
 # Main methods
 # =========================== 
@@ -97,22 +109,16 @@ def predict(model, dataset):
     return predictions
 
 def process_default(processed_images, model):
-    print(" - Loading saved model")
+    print(" - Loading saved model...")
 
     model = load_model(model)
 
-    print(f" - Test data loaded for {len(processed_images)} images")
-    print(" - Prediction started")
+    print(" - Prediction started...")
 
     predictions = predict(model, processed_images)
-
-    print(f" - Prediction finished for {len(predictions)} images")
-    print(f" - Transforming predictions into labeled values.")
-
-    labeled_predictions = label_predictions(predictions)
-
-    print(f" - Saving labeled images into {OUTPUT_PATH} folder")
-    write_mask_output(labeled_predictions)
+    make_labels_and_output(predictions)
+    cut_panels(predictions, images_set())
+    
 
 # ===========================
 # TFLite methods
@@ -143,6 +149,8 @@ def predict_tflite(interpreter, input_data, input_details, output_details, num_i
     return predictions
 
 def process_tflite(processed_images, model):
+    print(" - Loading saved model...")
+
     interpreter, input_details, output_details = load_tflite_model(model)
     test_dataset = load_dataset(processed_images)
 
@@ -153,19 +161,59 @@ def process_tflite(processed_images, model):
     input_data = images
     num_images = images.shape[0]
 
+    print(" - Prediction started...")
+
     predictions = predict_tflite(interpreter=interpreter, input_data=input_data,
                                  input_details=input_details, output_details=output_details, num_images=num_images)
 
-    print(f" - Let's transform predictions into labeled values.")
+    make_labels_and_output(predictions)
+    cut_panels(predictions, images_set())
 
-    labeled_predictions = label_predictions(predictions)
+def images_set():
+    image_paths = files_in_folder(INPUT_PATH)
 
-    print(f" - Saving labeled images into {OUTPUT_PATH} folder")
-    write_mask_output(labeled_predictions)
+    images = {}
+
+    for path in image_paths:
+        image = cv2.imread(INPUT_PATH + path)
+        images[path] = image
+
+    return images
+
+
+def cut_panels(predictions, images):
+    for i, prediction in enumerate(predictions):
+        current_key = [k for k in images.keys()][i]
+        current_image = images[current_key]
+        original_name = current_key[0: current_key.index('.')]
+        
+        print(f" - Working in '{current_key}'...")
+
+        img_width = current_image.shape[1]
+        img_height = current_image.shape[0]
+
+        panels = extract_panels(prediction, original_width=img_width, original_height=img_height).panels
+
+        print("    - Found %d panel(s)." % len(panels))
+
+        for j, panel in enumerate(panels):
+            if not os.path.exists(PANELS_OUTPUT_PATH):
+                os.makedirs(PANELS_OUTPUT_PATH)
+
+            name = f'./{PANELS_OUTPUT_PATH}{original_name}-{j}.jpg'
+
+            left = int(panel.left)
+            width = int(panel.width)
+            top = int(panel.top)
+            height = int(panel.height)
+
+            cropped_image = current_image[top:height, left:width]
+            cv2.imwrite(name, cropped_image)
 
 
 if __name__ == "__main__":
     print(" - Loading and processing images...")
+
     processed_images = load_images_from_folder(INPUT_PATH, shuffle=False)
 
     process_default(processed_images, './model')
