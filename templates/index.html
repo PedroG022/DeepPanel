@@ -45,12 +45,12 @@
             <tbody>
             {% for prediction in predictions -%}
             <tr>
-                <th><a href="../dataset/test/raw/{{ prediction.page }}"><img
-                        src="../dataset/test/raw/{{ prediction.page }}"></a></th>
-                <th><a href="../output/{{ prediction.pred }}"><img
-                        src="../output/{{ prediction.pred }}"></a></th>
-                <th><a href="../dataset/test/segmentation_mask/{{ prediction.mask }}"><img
-                        src="../dataset/test/segmentation_mask/{{ prediction.mask }}"></a></th>
+                <th><a href=".{{ prediction.test_folder }}{{ prediction.page }}"><img
+                        src=".{{ prediction.test_folder }}{{ prediction.page }}"></a></th>
+                <th><a href=".{{ prediction.output_folder }}{{ prediction.pred }}"><img
+                        src=".{{ prediction.output_folder }}{{ prediction.pred }}"></a></th>
+                <th><a href=".{{ prediction.mask_folder }}{{ prediction.mask }}"><img
+                        src=".{{ prediction.mask_folder }}{{ prediction.mask }}"></a></th>
             </tr>
             {% endfor %}
             </tbody>

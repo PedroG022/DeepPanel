@@ -15,6 +15,11 @@ class PredictionResult:
         self.pred = pred
         self.mask = mask
 
+        self.output_folder = "./output/"
+        self.test_folder = "./dataset/test/raw/"
+        self.mask_folder = "./dataset/test/segmentation_mask/"
+    
+
 
 def generate_output_template():
     output_images = files_in_folder("./output/")

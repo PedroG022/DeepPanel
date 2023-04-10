@@ -129,8 +129,22 @@ def extract_panels_info(labeled_matrix, width: int, height: int, scale: float, o
                                original_image_height)
 
 def parse_matrix(matrix):
-    width = len(matrix[0])
-    height = len(matrix[0][0])
+    
+    width = 0
+    height = 0
+    isTflite = False
+
+    if matrix.shape[0] == 1:
+        width = len(matrix[0])
+        height = len(matrix[0][0])
+        isTflite = True
+    elif matrix.shape[0] == 224:
+        width = len(matrix)
+        height = len(matrix[0])
+
+    print(matrix.shape)
+    print(width, height)
+    
 
     # print(f"Width: {width}")
     # print(f"Height: {height}")
@@ -140,7 +154,15 @@ def parse_matrix(matrix):
     for x in range(width):
         for y in range(height):
             val = -1
-            background, border, content = matrix[0][x][y]
+            
+            result = None
+
+            if isTflite:
+                result = matrix[0][x][y]
+            else:
+                result = matrix[x][y]
+
+            background, border, content = result
 
             if background >= content and background > border:
                 val = 0

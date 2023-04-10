@@ -3,10 +3,23 @@ from collections import Counter
 
 class Panel:
     def __init__(self):
+        self.number_in_page = None
+        
         self.left = None
         self.bottom = None
         self.right = None
         self.top = None
+
+        self.name = None
+
+    def __str__(self) -> str:
+        return f"""
+            Number in page: {self.number_in_page}
+            Left: {round(self.left)}
+            Width: {round(self.width)}
+            Top: {round(self.top)}
+            Height: {round(self.height)}
+        """
 
 class DeepPanelResult:
     def __init__(self):

@@ -6,10 +6,21 @@ from ShallowPanel import parse_matrix, extract_panels
 
 from utils import count_files_in_folder, labeled_prediction_to_image, map_prediction_to_mask, IMAGE_SIZE
 from metrics import iou_coef, dice_coef, border_acc, background_acc, content_acc
+from DeepPanelExtractor import extract_panels
+from Mask import generate_panels_bitmap
 from tensorflow import keras
 
 INPUT_PATH = "./supreme/"
 OUTPUT_PATH = "./output/"
+OUTPUT_PATH_MAKS = f"{OUTPUT_PATH}/masks/"
+OUTPUT_PATH_PANELS = f"{OUTPUT_PATH}/panels/"
+
+def initDirs():
+    paths = [INPUT_PATH, OUTPUT_PATH, OUTPUT_PATH_MAKS, OUTPUT_PATH_PANELS]
+
+    for path in paths:
+        if not os.path.exists(path):
+            os.makedirs(path)
 
 # ===========================
 # Modified methods
@@ -49,9 +60,6 @@ def load_dataset(processed_images):
 
 def write_mask_output(labeled_predictions):
     predicted_index = 0
-
-    if not os.path.exists(OUTPUT_PATH):
-        os.makedirs(OUTPUT_PATH)
 
     for predicted_result in labeled_predictions:
         prediction_as_image = labeled_prediction_to_image(predicted_result)
@@ -162,14 +170,53 @@ def process_tflite(processed_images, model):
 
     # print(f" - Let's transform predictions into labeled values.")
 
-    # labeled_predictions = label_predictions(predictions)
+    images = {}
 
-    # print(f" - Saving labeled images into {OUTPUT_PATH} folder")
-    # write_mask_output(labeled_predictions)
+    for path in image_paths:
+        image = cv2.imread(INPUT_PATH + path)
+        images[path] = image
+
+    return images
+
+
+def cut_panels(predictions, images):
+    for i, prediction in enumerate(predictions):
+        current_key = [k for k in images.keys()][i]
+        current_image = images[current_key]
+        original_name = current_key[0: current_key.index('.')]
+        
+        print(f" - Working in '{current_key}'...")
+
+        img_width = current_image.shape[1]
+        img_height = current_image.shape[0]
+
+        panels = extract_panels(prediction, original_width=img_width, original_height=img_height).panels
+        paineis_ordenados = sorted(panels, key=lambda painel: (-painel.top, painel.left), reverse=True)
+
+        print("    - Found %d panel(s)." % len(panels))
+            
+        for j, panel in enumerate(paineis_ordenados):
+            panel.number_in_page = j
+
+            name = f'./{OUTPUT_PATH_PANELS}{original_name}.{panel.number_in_page}.jpg'
+
+            panel.name = name
+
+            left = int(panel.left)
+            width = int(panel.width)
+            top = int(panel.top)
+            height = int(panel.height)
+
+            cropped_image = current_image[top:height, left:width]
+            cv2.imwrite(name, cropped_image)
+        
+        result = generate_panels_bitmap(current_image, paineis_ordenados)
+        cv2.imwrite(f'{OUTPUT_PATH_MAKS}{original_name}.jpg', result)
 
 
 if __name__ == "__main__":
     print(" - Loading and processing images...")
     processed_images = load_images_from_folder(INPUT_PATH, shuffle=False)
 
-    process_tflite(processed_images, 'pretrained.model.tflite')
+    process_default(processed_images, './model/')
+    # process_tflite(processed_images, 'pretrained.model.tflite')
